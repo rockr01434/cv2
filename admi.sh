@@ -374,9 +374,8 @@ virtualhost admin_panel {
 EOVH
 
 # Map admin_panel to listener
-if ! grep -q "map admin_panel admin_panel" "$OLS_CONF"; then
-  sed -i '/listener AdminPanel {/a\  map                     admin_panel admin_panel' "$OLS_CONF"
-fi
+sed -i '/map.*admin_panel/d' "$OLS_CONF"
+sed -i '/listener AdminPanel {/a\  map                     admin_panel *' "$OLS_CONF"
 
 # Create vhost config dir and file
 mkdir -p "${VHDIR}/admin_panel"
