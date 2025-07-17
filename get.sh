@@ -7,9 +7,10 @@ sudo rpm --import https://repo.almalinux.org/almalinux/RPM-GPG-KEY-AlmaLinux
 echo "Installing EPEL repository..."
 sudo yum install epel-release -y
 
-# Install unzip, wget, nano, and PHP for admin panel
-echo "Installing unzip wget nano php..."
-sudo yum install unzip wget nano php php-cli php-common php-json php-mbstring php-curl php-xml -y
+
+# Install unzip
+echo "Installing unzip wget nano..."
+sudo yum install unzip wget nano -y
 
 # Install OpenLiteSpeed repository
 echo "Installing OpenLiteSpeed repository..."
@@ -20,10 +21,17 @@ sudo yum install openlitespeed -y
 echo "Installing OpenLiteSpeed and PHP..."
 sudo yum install openlitespeed lsphp73 lsphp73-common lsphp73-opcache lsphp73-mbstring lsphp73-xml lsphp73-gd lsphp73-curl lsphp73-intl lsphp73-soap lsphp73-xmlrpc lsphp73-ldap lsphp73-bcmath lsphp73-pear lsphp73-devel lsphp73-json lsphp73-zip lsphp73-imap lsphp73-mcrypt lsphp73-iconv lsphp73-gettext lsphp73-ftp -y
 
+# Install additional PHP versions
+echo "Installing additional PHP versions..."
+sudo yum install lsphp74 lsphp74-common lsphp74-opcache lsphp74-mbstring lsphp74-xml lsphp74-gd lsphp74-curl lsphp74-intl lsphp74-soap lsphp74-xmlrpc lsphp74-ldap lsphp74-bcmath lsphp74-pear lsphp74-devel lsphp74-json lsphp74-zip lsphp74-imap lsphp74-mcrypt lsphp74-iconv lsphp74-gettext lsphp74-ftp -y
+sudo yum install lsphp80 lsphp80-common lsphp80-opcache lsphp80-mbstring lsphp80-xml lsphp80-gd lsphp80-curl lsphp80-intl lsphp80-soap lsphp80-xmlrpc lsphp80-ldap lsphp80-bcmath lsphp80-pear lsphp80-devel lsphp80-json lsphp80-zip lsphp80-imap lsphp80-mcrypt lsphp80-iconv lsphp80-gettext lsphp80-ftp -y
+sudo yum install lsphp81 lsphp81-common lsphp81-opcache lsphp81-mbstring lsphp81-xml lsphp81-gd lsphp81-curl lsphp81-intl lsphp81-soap lsphp81-xmlrpc lsphp81-ldap lsphp81-bcmath lsphp81-pear lsphp81-devel lsphp81-json lsphp81-zip lsphp81-imap lsphp81-mcrypt lsphp81-iconv lsphp81-gettext lsphp81-ftp -y
+
 yum groupinstall "Development Tools" -y
 yum install libzip libzip-devel pcre2-devel -y
 sudo /usr/local/lsws/lsphp73/bin/pecl install gd mbstring json curl zip
 sudo pkill lsphp
+
 
 # Enable and start OpenLiteSpeed
 echo "Enabling and starting OpenLiteSpeed..."
@@ -32,6 +40,7 @@ sudo systemctl start lsws
 
 # Get server IP address
 SERVER_IP=$(hostname -I | awk '{print $1}')
+
 
 ssl_dir="/usr/local/lsws/conf/vhosts/Example"
 ssl_key="${ssl_dir}/localhost.key"
@@ -114,6 +123,8 @@ chown -R lsadm:lsadm /usr/local/lsws/
 echo "restarting OpenLiteSpeed..."
 sudo systemctl restart lsws
 
+
+
 # Install Certbot and the OpenLiteSpeed plugin for Certbot
 echo "Installing Certbot and OpenLiteSpeed plugin..."
 sudo yum install certbot python3-certbot-nginx -y
@@ -122,26 +133,21 @@ sudo yum install certbot python3-certbot-nginx -y
 wget -O /usr/local/bin/star https://raw.githubusercontent.com/rockr01434/scripts/main/manage.sh > /dev/null 2>&1
 chmod +x /usr/local/bin/star > /dev/null 2>&1
 
+
 # Install File Browser
-echo "Installing File Browser..."
 wget -qO- https://github.com/hostinger/filebrowser/releases/download/v2.32.0-h3/filebrowser-v2.32.0-h3.tar.gz | tar -xzf -
 sudo mv filebrowser-v2.32.0-h3 /usr/local/bin/filebrowser
 sudo chmod +x /usr/local/bin/filebrowser
 sudo chown nobody:nobody /usr/local/bin/filebrowser
 sudo mkdir -p /etc/filebrowser /var/lib/filebrowser
-
-# Initialize File Browser database
 filebrowser -d /var/lib/filebrowser/filebrowser.db config init
 filebrowser -d /var/lib/filebrowser/filebrowser.db config set -a $SERVER_IP -p 9999
 filebrowser -d /var/lib/filebrowser/filebrowser.db config set --trashDir .trash --viewMode list --sorting.by name --root /home --hidden-files .trash
 filebrowser -d /var/lib/filebrowser/filebrowser.db config set --disable-exec --branding.disableUsedPercentage --branding.disableExternal --perm.share=false --perm.execute=false
 filebrowser -d /var/lib/filebrowser/filebrowser.db users add admin admin
-
-# Configure File Browser for proxy authentication (will be used by admin panel)
-echo "Configuring File Browser for proxy authentication..."
-filebrowser -d /var/lib/filebrowser/filebrowser.db config set --auth.method=proxy --auth.header=X-Username
-
+filebrowser -d /var/lib/filebrowser/filebrowser.db config set --auth.method=proxy --auth.header=X-Auth-User
 sudo chown -R nobody:nobody /var/lib/filebrowser
+
 
 # Configure File Browser service
 cat <<EOL > "/etc/systemd/system/filebrowser.service"
@@ -160,48 +166,30 @@ LimitNOFILE=4096
 WantedBy=multi-user.target
 EOL
 
-# Configure SELinux and firewall for File Browser
-sudo semanage fcontext -a -t bin_t "/usr/local/bin/filebrowser(/.*)?" 2>/dev/null || true
-sudo restorecon -R /usr/local/bin/filebrowser 2>/dev/null || true
+
+
+sudo semanage fcontext -a -t bin_t "/usr/local/bin/filebrowser(/.*)?"
+sudo restorecon -R /usr/local/bin/filebrowser
 
 sudo yum install policycoreutils-python-utils -y
-sudo semanage port -a -t http_port_t -p tcp 9999 2>/dev/null || true
+sudo semanage port -a -t http_port_t -p tcp 9999
+
 
 sudo systemctl daemon-reload
 sudo systemctl enable filebrowser
 sudo systemctl start filebrowser
 
-# Create admin panel installer script
-echo "Creating VPS Admin Panel installer..."
-cat > /usr/local/bin/install-admin-panel.sh << 'ADMIN_INSTALLER'
-#!/bin/bash
+# Install MariaDB
+echo "Installing MariaDB..."
+sudo yum install mariadb-server -y
+sudo systemctl enable mariadb
+sudo systemctl start mariadb
 
-ADMIN_DIR="/var/www/vps-admin"
-ADMIN_PORT="7869"
-SERVER_IP=$(hostname -I | awk '{print $1}')
+# Install phpMyAdmin
+echo "Installing phpMyAdmin..."
+sudo yum install phpMyAdmin -y
 
-echo "Installing VPS Admin Panel on port $ADMIN_PORT..."
-
-# Create admin panel directory
-mkdir -p "$ADMIN_DIR"
-cd "$ADMIN_DIR"
-
-# Download admin panel files from GitHub or create them locally
-echo "Creating admin panel files..."
-
-# We'll create the admin panel files here in the next script
-echo "Admin panel installer created. Run 'install-admin-panel.sh' to install the web admin panel."
-
-ADMIN_INSTALLER
-
-chmod +x /usr/local/bin/install-admin-panel.sh
-
-printf "\n\n\033[0;32mBase VPS installation completed successfully!\033[0m\n\n"
-printf "\033[0;32mOpenLiteSpeed: Running on ports 80/443\033[0m\n"
-printf "\033[0;32mFile Manager: http://$SERVER_IP:9999\033[0m\n"
-printf "\033[0;32mFile Manager User: admin\033[0m\n"
-printf "\033[0;32mFile Manager Pass: admin\033[0m\n\n"
-printf "\033[0;33mNext steps:\033[0m\n"
-printf "\033[0;33m1. Run 'install-admin-panel.sh' to install the web admin panel\033[0m\n"
-printf "\033[0;33m2. Use 'star -create domain.com' to create domains\033[0m\n"
-printf "\033[0;33m3. Use 'star -h' for more domain management options\033[0m\n\n"
+printf "\n\n\033[0;32mInstallation completed. OpenLiteSpeed, PHP 7.3, Python 3, Certbot, and unzip have been installed and configured.\033[0m\n\n\n"
+printf "\033[0;32mYour File Manager Link: http://$SERVER_IP:9999\033[0m\n"
+printf "\033[0;32mYour File Manager User: admin\033[0m\n"
+printf "\033[0;32mYour File Manager Pass: admin\033[0m\n\n\n"
