@@ -10,7 +10,7 @@ GROUP='nobody'
 WWW_PATH='/home'
 
 # Update manage.sh with group permissions
-cat << 'EOF' > /usr/local/bin/star
+cat << '_MANAGE_SH_' > /usr/local/bin/star
 #!/bin/bash
 
 # Configuration
@@ -72,7 +72,7 @@ create_website() {
     fi
 
     # Create Virtual Host Configuration
-    cat <<EOF >> "$WEBCF"
+    cat <<EOVH >> "$WEBCF"
 
 virtualhost ${domain} {
 vhRoot                  ${WWW_PATH}/${domain}/
@@ -88,14 +88,14 @@ ssl {
 }
 }
 
-EOF
+EOVH
 
     create_folder "${doc_root}"
     create_folder "${VHDIR}/${domain}"
 
     # Create index.html if it doesn't exist
     if [ ! -f "${doc_root}/index.html" ]; then
-        cat <<EOF > "${doc_root}/index.html"
+        cat <<EOIN > "${doc_root}/index.html"
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -121,13 +121,13 @@ EOF
     <h1>Success! The $domain is working!</h1>
 </body>
 </html>
-EOF
+EOIN
         change_owner "${doc_root}/index.html"
     fi
 
     # Create Virtual Host Configuration if it doesn't exist
     if [ ! -f "${vh_conf_file}" ]; then
-        cat > "${vh_conf_file}" <<EOF
+        cat > "${vh_conf_file}" <<EOCF
 docRoot                   \$VH_ROOT/public_html
 vhDomain                  \$VH_NAME
 vhAliases                 www.\$VH_NAME
@@ -219,7 +219,7 @@ vhssl  {
   sslSessionCache         1
   sslSessionTickets       1
 }
-EOF
+EOCF
         chown -R lsadm:nobody "${VHDIR}/${domain}"
         chmod -R g+w "${VHDIR}/${domain}"
     else
@@ -337,7 +337,7 @@ while [ "$1" != "" ]; do
             ;;
     esac
 done
-EOF
+_MANAGE_SH_
 
 chmod +x /usr/local/bin/star
 
@@ -362,7 +362,7 @@ fi
 
 # Add virtualhost for admin panel
 sed -i '/virtualhost admin_panel {/,/}/d' "$WEBCF"
-cat <<EOF >> "$WEBCF"
+cat <<EOVH >> "$WEBCF"
 
 virtualhost admin_panel {
   vhRoot                  /home/admin_panel/
@@ -371,7 +371,7 @@ virtualhost admin_panel {
   enableScript            1
   restrained              1
 }
-EOF
+EOVH
 
 # Map admin_panel to listener
 if ! grep -q "map admin_panel admin_panel" "$OLS_CONF"; then
@@ -379,8 +379,8 @@ if ! grep -q "map admin_panel admin_panel" "$OLS_CONF"; then
 fi
 
 # Create vhost config dir and file
-create_folder "${VHDIR}/admin_panel"
-cat <<EOF > "${VHDIR}/admin_panel/vhconf.conf"
+mkdir -p "${VHDIR}/admin_panel"
+cat <<EOCF > "${VHDIR}/admin_panel/vhconf.conf"
 docRoot                   \$VH_ROOT/public_html
 enableGzip                1
 
@@ -446,7 +446,7 @@ context /phpmyadmin/ {
   }
   addDefaultCharset       off
 }
-EOF
+EOCF
 
 # Set permissions for conf
 chown -R lsadm:nobody "${VHDIR}/admin_panel"
@@ -459,7 +459,7 @@ echo "nobody ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart lsws" > /etc/sudoers
 echo "nobody ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart mariadb" > /etc/sudoers.d/nobody-mariadb
 
 # Create login.php
-cat << 'EOF' > /home/admin_panel/public_html/login.php
+cat << 'EOPH' > /home/admin_panel/public_html/login.php
 <?php
 session_start();
 if (isset($_SESSION['loggedin'])) {
@@ -512,10 +512,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     </div>
 </body>
 </html>
-EOF
+EOPH
 
 # Create index.php
-cat << 'EOF' > /home/admin_panel/public_html/index.php
+cat << 'EOPH' > /home/admin_panel/public_html/index.php
 <?php
 session_start();
 if (!isset($_SESSION['loggedin'])) {
@@ -566,7 +566,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             if (file_exists($conf)) {
                 $content = file_get_contents($conf);
                 $content = preg_replace('/lsphp\d\d/', "lsphp$ver", $content);
-                $content = preg_replace('/lsphp\d\d\/bin/', "lsphp$ver/bin", $content);
                 file_put_contents($conf, $content);
                 shell_exec("sudo systemctl restart lsws");
             }
@@ -728,16 +727,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     </div>
 </body>
 </html>
-EOF
+EOPH
 
 # Create logout.php
-cat << 'EOF' > /home/admin_panel/public_html/logout.php
+cat << 'EOPH' > /home/admin_panel/public_html/logout.php
 <?php
 session_start();
 session_destroy();
 header('Location: login.php');
 ?>
-EOF
+EOPH
 
 # Set ownership for public_html
 chown -R nobody:nobody /home/admin_panel/public_html
