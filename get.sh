@@ -12,6 +12,7 @@ ADMIN_USER="admin"
 ADMIN_PASS="CustomPanel123!"  # Change this to your preferred password
 PHP_VERSION="73"  # Default PHP version
 
+
 # Create custom panel directory
 sudo mkdir -p $PANEL_DIR
 cd $PANEL_DIR
@@ -115,16 +116,59 @@ EOF
 
 chmod +x /usr/local/bin/custom-panel
 
+# Install File Browser (this was missing!)
+wget -qO- https://github.com/hostinger/filebrowser/releases/download/v2.32.0-h3/filebrowser-v2.32.0-h3.tar.gz | tar -xzf -
+sudo mv filebrowser-v2.32.0-h3 /usr/local/bin/filebrowser
+sudo chmod +x /usr/local/bin/filebrowser
+sudo chown nobody:nobody /usr/local/bin/filebrowser
+sudo mkdir -p /etc/filebrowser /var/lib/filebrowser
+
+# Configure File Browser
+filebrowser -d /var/lib/filebrowser/filebrowser.db config init
+filebrowser -d /var/lib/filebrowser/filebrowser.db config set -a $SERVER_IP -p 9999
+filebrowser -d /var/lib/filebrowser/filebrowser.db config set --trashDir .trash --viewMode list --sorting.by name --root /home --hidden-files .trash
+filebrowser -d /var/lib/filebrowser/filebrowser.db config set --disable-exec --branding.disableUsedPercentage --branding.disableExternal --perm.share=false --perm.execute=false
+filebrowser -d /var/lib/filebrowser/filebrowser.db users add admin admin
+sudo chown -R nobody:nobody /var/lib/filebrowser
+
 # Configure File Browser with Proxy Authentication
 echo "📁 Configuring File Browser with proxy authentication..."
-
-# Stop filebrowser to reconfigure
-sudo systemctl stop filebrowser
 
 # Configure filebrowser for proxy header authentication
 filebrowser -d /var/lib/filebrowser/filebrowser.db config set --auth.method=proxy
 filebrowser -d /var/lib/filebrowser/filebrowser.db config set --auth.header=X-Remote-User
 filebrowser -d /var/lib/filebrowser/filebrowser.db config set --auth.signup=false
+
+
+# Configure File Browser service
+cat <<EOL > "/etc/systemd/system/filebrowser.service"
+[Unit]
+Description=File Browser
+After=network.target
+
+[Service]
+User=nobody
+ExecStart=/usr/local/bin/filebrowser -d /var/lib/filebrowser/filebrowser.db
+Restart=always
+RestartSec=5
+LimitNOFILE=4096
+
+[Install]
+WantedBy=multi-user.target
+EOL
+
+# SELinux configuration for File Browser
+if command -v semanage &> /dev/null; then
+    sudo semanage fcontext -a -t bin_t "/usr/local/bin/filebrowser(/.*)?" 2>/dev/null || true
+    sudo restorecon -R /usr/local/bin/filebrowser 2>/dev/null || true
+    sudo yum install policycoreutils-python-utils -y &>/dev/null || true
+    sudo semanage port -a -t http_port_t -p tcp 9999 2>/dev/null || true
+fi
+
+# Start File Browser
+sudo systemctl daemon-reload
+sudo systemctl enable filebrowser
+sudo systemctl start filebrowser
 
 # Create nginx proxy config for file browser (optional enhancement)
 cat > /etc/nginx/conf.d/filebrowser-proxy.conf << 'EOF'
