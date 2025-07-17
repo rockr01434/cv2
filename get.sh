@@ -129,10 +129,6 @@ sudo systemctl restart lsws
 echo "Installing Certbot and OpenLiteSpeed plugin..."
 sudo yum install certbot python3-certbot-nginx -y
 
-# Wget website create script
-wget -O /usr/local/bin/star https://raw.githubusercontent.com/rockr01434/scripts/main/manage.sh > /dev/null 2>&1
-chmod +x /usr/local/bin/star > /dev/null 2>&1
-
 
 # Install File Browser
 wget -qO- https://github.com/hostinger/filebrowser/releases/download/v2.32.0-h3/filebrowser-v2.32.0-h3.tar.gz | tar -xzf -
